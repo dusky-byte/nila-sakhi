@@ -1,0 +1,176 @@
+@import url('https://fonts.googleapis.com/css2?family=Anek+Tamil:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- NILA Design System ----------------------------------------- */
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  font-size: 18px; /* base bump for accessibility */
+}
+
+body {
+  font-family: 'Anek Tamil', system-ui, sans-serif;
+  font-weight: 400;
+  background-color: #FDF8F3;
+  color: #1A1208;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* Focus ring — warm orange */
+:focus-visible {
+  outline: 3px solid #E8811A;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Typography helpers ----------------------------------------- */
+
+.text-display {
+  @apply text-3xl font-semibold leading-tight tracking-tight text-text;
+}
+
+.text-heading {
+  @apply text-2xl font-semibold leading-snug text-text;
+}
+
+.text-body {
+  @apply text-base leading-relaxed text-text;
+}
+
+.text-caption {
+  @apply text-sm leading-normal text-textMuted;
+}
+
+/* ---- Mic pulse animations ---------------------------------------- */
+
+@keyframes mic-ring-1 {
+  0%   { transform: scale(1);   opacity: 0.5; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes mic-ring-2 {
+  0%   { transform: scale(1);   opacity: 0.35; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.mic-ring-1 {
+  animation: mic-ring-1 1.4s ease-out infinite;
+}
+
+.mic-ring-2 {
+  animation: mic-ring-2 1.4s ease-out 0.3s infinite;
+}
+
+/* ---- Sound wave bars (for Speaking state) ----------------------- */
+
+.wave-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: #E8811A;
+  transform-origin: center bottom;
+}
+
+.wave-bar:nth-child(1) { animation: wave 0.8s ease-in-out 0.0s infinite; }
+.wave-bar:nth-child(2) { animation: wave 0.8s ease-in-out 0.1s infinite; }
+.wave-bar:nth-child(3) { animation: wave 0.8s ease-in-out 0.2s infinite; }
+.wave-bar:nth-child(4) { animation: wave 0.8s ease-in-out 0.3s infinite; }
+.wave-bar:nth-child(5) { animation: wave 0.8s ease-in-out 0.15s infinite; }
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+  50%       { transform: scaleY(1.6); opacity: 1; }
+}
+
+/* ---- Typing dots ------------------------------------------------- */
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E8811A;
+  animation: typing 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* ---- Scrollbar --------------------------------------------------- */
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E8DDD3; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #D4C5B7; }
+
+/* ---- Rangoli canvas ---------------------------------------------- */
+
+.rangoli-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #E8DDD3;
+  transition: background 0.15s ease;
+  cursor: crosshair;
+}
+
+.rangoli-dot.active {
+  background: #E8811A;
+}
+
+/* ---- Card / surface helpers -------------------------------------- */
+
+.card {
+  @apply bg-surface rounded-2xl shadow-card border border-border;
+}
+
+.card-warm {
+  @apply bg-surfaceWarm rounded-2xl shadow-card border border-border;
+}
+
+/* ---- Overlay window ---------------------------------------------- */
+
+.nila-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(26, 18, 8, 0.22);
+  border: 1px solid #E8DDD3;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* ---- Slide-in animation for overlays/cards ---------------------- */
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slide-up 0.35s cubic-bezier(0.19, 1, 0.22, 1) both;
+}

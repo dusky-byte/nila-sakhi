@@ -1,0 +1,7 @@
+.env
+
+ui/*
+node_modules/*
+.next/*
+
+*.sql
