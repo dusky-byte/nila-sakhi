@@ -49,7 +49,7 @@ JSON Schema:
 
 export class GroqProvider implements AIProvider {
   async understand(input: AIInput): Promise<AIResponse> {
-    const model = "openai/gpt-oss-120b"; // Hardcoded to bypass invalid env var
+    const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile"; 
 
     const historyText = input.conversationHistory
       .slice(-6)
@@ -71,14 +71,15 @@ export class GroqProvider implements AIProvider {
           model,
           temperature: 0.2,
           max_tokens: 600,
-          response_format: { type: "json_object" },
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: JSON.stringify(context) },
           ],
         });
 
-        const raw = res.choices[0]?.message?.content ?? "{}";
+        let raw = res.choices[0]?.message?.content ?? "{}";
+        // Strip markdown fences in case the model returns ```json ... ```
+        raw = raw.replace(/^```(json)?\s*/i, "").replace(/\s*```$/i, "");
         const parsed = AIResponseSchema.safeParse(JSON.parse(raw));
         if (parsed.success) return parsed.data;
       } catch (e) {

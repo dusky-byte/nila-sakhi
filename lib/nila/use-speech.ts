@@ -59,14 +59,29 @@ export function useSpeech({ language, onResult, onStateChange }: UseSpeechOption
   const [isListening, setIsListening]   = useState(false);
   const [isSupported, setIsSupported]   = useState(false);
   const [isTTSReady,  setIsTTSReady]    = useState(false);
-  const synth = useRef<SpeechSynthesis | null>(null);
+  const synth   = useRef<SpeechSynthesis | null>(null);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]); // cached voice list
+
+  // Always keep a ref to the latest language so callbacks never read stale closures
+  const langRef = useRef(language);
+  useEffect(() => { langRef.current = language; }, [language]);
 
   useEffect(() => {
     setIsSupported(!!getSpeechRecognition());
-    if (getTTSSupported()) {
-      synth.current = window.speechSynthesis;
-      setIsTTSReady(true);
+    if (!getTTSSupported()) return;
+
+    const s = window.speechSynthesis;
+    synth.current = s;
+
+    // Voices load asynchronously — populate cache once ready
+    function cacheVoices() {
+      voicesRef.current = s.getVoices();
     }
+    cacheVoices(); // may already be ready on some browsers
+    s.addEventListener("voiceschanged", cacheVoices);
+    setIsTTSReady(true);
+
+    return () => s.removeEventListener("voiceschanged", cacheVoices);
   }, []);
 
   const startListening = useCallback(() => {
@@ -79,7 +94,8 @@ export function useSpeech({ language, onResult, onStateChange }: UseSpeechOption
     const recognition = new SR();
     recognition.continuous    = false;
     recognition.interimResults = false;
-    recognition.lang          = toLangCode(language);
+    // Always use the CURRENT language from ref — never the stale closure value
+    recognition.lang          = toLangCode(langRef.current);
 
     recognition.onresult = (e) => {
       const text = Array.from(e.results)
@@ -111,7 +127,7 @@ export function useSpeech({ language, onResult, onStateChange }: UseSpeechOption
       setIsListening(false);
       onStateChange(false);
     }
-  }, [language, onResult, onStateChange]);
+  }, [onResult, onStateChange]); // ← language intentionally omitted; read from ref instead
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
@@ -122,18 +138,30 @@ export function useSpeech({ language, onResult, onStateChange }: UseSpeechOption
   const speak = useCallback((text: string, lang: SupportedLanguage, onEnd?: () => void) => {
     if (!synth.current) { onEnd?.(); return; }
     synth.current.cancel();
+    if (!text) { onEnd?.(); return; }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang  = toLangCode(lang);
+    const targetLocale = toLangCode(lang); // e.g. "ta-IN"
+    utterance.lang  = targetLocale;
     utterance.rate  = 0.9;
     utterance.pitch = 1.0;
 
-    // Try to find a suitable voice
-    const voices = synth.current.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith(utterance.lang.split("-")[0]));
-    if (preferred) utterance.voice = preferred;
+    // Pick the best voice from the cached list
+    // Prefer exact locale match first, then language prefix match
+    const voices = voicesRef.current.length > 0
+      ? voicesRef.current
+      : (synth.current.getVoices()); // last-resort fallback
+
+    const targetNorm = targetLocale.toLowerCase();
+    const targetPrefix = targetNorm.split("-")[0];
+
+    const exactMatch  = voices.find(v => v.lang.toLowerCase().replace("_", "-") === targetNorm);
+    const prefixMatch = voices.find(v => v.lang.toLowerCase().startsWith(targetPrefix));
+    const chosen = exactMatch ?? prefixMatch ?? null;
+    if (chosen) utterance.voice = chosen;
 
     utterance.onend = () => onEnd?.();
+    utterance.onerror = () => onEnd?.(); // don't hang if TTS fails
     synth.current.speak(utterance);
   }, []);
 
