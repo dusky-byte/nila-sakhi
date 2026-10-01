@@ -96,7 +96,7 @@ const SCHEMES = [
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type UILang = "ta" | "hi" | "en";
-type AppView = "home" | "schemes" | "scheme-detail" | "alerts" | "news";
+type AppView = "landing" | "home" | "register" | "schemes" | "scheme-detail" | "alerts" | "news";
 type SchemeType = typeof SCHEMES[0];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ export function NILAShell() {
   const [registered, setRegistered] = useState(false);
 
   // ── Navigation state ──────────────────────────────────────────────────────
-  const [view,            setView]           = useState<AppView>("home");
+  const [view,            setView]           = useState<AppView>("landing");
   const [activeScheme,    setActiveScheme]   = useState<SchemeType | null>(null);
   const [schemeChat,      setSchemeChat]     = useState<{ role: "nila" | "user"; text: string }[]>([]);
   const [schemeChatInput, setSchemeChatInput] = useState("");
@@ -254,16 +254,20 @@ export function NILAShell() {
     // eslint-disable-next-line
   }, [showAlerts, uiLang]);
 
-  // ── Fetch News ────────────────────────────────────────────────────────────
+  // ── Fetch News (clear + reload on lang change) ────────────────────────────
+  const newsFetchedLang = useRef<string | null>(null);
   useEffect(() => {
-    if (view === "news" && newsItems.length === 0) {
-      setLoadingNews(true);
-      fetch(`/api/news?lang=${uiLang}`)
-        .then(res => res.json())
-        .then(data => { if (data.ok) setNewsItems(data.news); })
-        .catch(console.error)
-        .finally(() => setLoadingNews(false));
-    }
+    if (view !== "news") return;
+    // If already fetched for this language, skip
+    if (newsFetchedLang.current === uiLang && newsItems.length > 0) return;
+    setNewsItems([]);
+    setLoadingNews(true);
+    newsFetchedLang.current = uiLang;
+    fetch(`/api/news?lang=${uiLang}`)
+      .then(res => res.json())
+      .then(data => { if (data.ok) setNewsItems(data.news); })
+      .catch(console.error)
+      .finally(() => setLoadingNews(false));
     // eslint-disable-next-line
   }, [view, uiLang]);
 
@@ -389,6 +393,7 @@ export function NILAShell() {
   }
 
   // ── Lang Dropdown ─────────────────────────────────────────────────────────
+  const langLabel = uiLang === "ta" ? "தமிழ்" : uiLang === "hi" ? "हिन्दी" : "English";
   const langDropdownUI = (
     <div className="relative z-50">
       <button onClick={() => setShowLangDrop(p => !p)}
@@ -422,8 +427,126 @@ export function NILAShell() {
   const isComplete = session.step === "COMPLETE";
   const userRegion = (answers.address || "").toLowerCase();
   const filteredSchemes = SCHEMES.filter(s => s.regions.includes("all") || s.regions.some(r => userRegion.includes(r)));
-  const langLabel = uiLang === "ta" ? "தமிழ்" : uiLang === "hi" ? "हिन्दी" : "English";
   const orbActive = isListening || isSpeaking || isLoading;
+
+  // ── LANDING PAGE ─────────────────────────────────────────────────────────────
+  if (view === "landing") {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-[#FDF8F3] overflow-hidden relative">
+        {/* Texture */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{ backgroundImage: "url(/doodle.svg)", backgroundSize: "400px", backgroundRepeat: "repeat" }} />
+
+        {/* Lang picker top-right */}
+        <div className="absolute top-4 right-4 z-20">
+          {langDropdownUI}
+        </div>
+        {showLangDrop && <div className="fixed inset-0 z-10" onClick={() => setShowLangDrop(false)} />}
+
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-6">
+          {/* Logo orb */}
+          <div className="relative w-24 h-24 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-[#ef533f]/10 animate-ping" style={{ animationDuration: "3s" }} />
+            <div className="absolute inset-3 rounded-full bg-[#ef533f]/15" />
+            <div className="w-16 h-16 rounded-full bg-[#ef533f] flex items-center justify-center shadow-xl text-white font-extrabold text-2xl">
+              N
+            </div>
+          </div>
+
+          {/* Brand name */}
+          <div>
+            <p className="font-extrabold text-4xl tracking-[0.3em] text-[#29221C] uppercase">NILA</p>
+            <p className="text-[11px] text-gray-400 font-bold tracking-[0.25em] uppercase mt-1">Voice Helper</p>
+          </div>
+
+          {/* Tagline — changes by language */}
+          <div className="max-w-xs">
+            <h1 className="text-2xl md:text-3xl font-bold text-[#29221C] leading-snug">
+              {uiLang === "ta"
+                ? <>உங்கள் குரல், <span className="text-[#ef533f]">உங்கள் கையில்</span>.</>
+                : uiLang === "hi"
+                ? <>आपकी आवाज़, <span className="text-[#ef533f]">आपके हाथों में</span>.</>
+                : <>Your Voice, <span className="text-[#ef533f]">In Your Hands</span>.</>}
+            </h1>
+            <p className="text-sm text-gray-500 mt-3 leading-relaxed">
+              {uiLang === "ta"
+                ? "அரசு திட்டங்களை உங்கள் மொழியில் அறிந்துகோள்ளுங்கள். மைக் மூலம் பெயர் சோல்லுங்கள், பதிவு எளிதாகிவிடும்."
+                : uiLang === "hi"
+                ? "अपनी भाषा में सरकारी योजनाएं जानें। बोलकर रजिस्ट्रेशन करें — आसान।"
+                : "Learn about government schemes in your language. Register by speaking — simple & fast."}
+            </p>
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => { init(); setView("register"); }}
+            className="mt-2 px-10 py-4 rounded-full bg-[#ef533f] text-white font-extrabold text-base shadow-xl hover:bg-[#d94834] active:scale-95 transition-all flex items-center gap-3">
+            <Mic size={18} strokeWidth={2.5} />
+            {uiLang === "ta" ? "பதிவு தொடங்குங்கள்" : uiLang === "hi" ? "शुरू करें" : "Get Started"}
+          </button>
+
+          {/* Scheme / News pills */}
+          <div className="flex gap-3 mt-1">
+            <button onClick={() => setView("schemes")}
+              className="px-4 py-2 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:border-[#ef533f] hover:text-[#ef533f] transition-all shadow-sm flex items-center gap-1.5">
+              <LayoutGrid size={12} /> {uiLang === "ta" ? "திட்டங்கள்" : uiLang === "hi" ? "योजनाएं" : "Schemes"}
+            </button>
+            <button onClick={() => setView("news")}
+              className="px-4 py-2 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:border-[#ef533f] hover:text-[#ef533f] transition-all shadow-sm flex items-center gap-1.5">
+              <Newspaper size={12} /> {uiLang === "ta" ? "செய்தி" : uiLang === "hi" ? "समाचार" : "News"}
+            </button>
+            <button onClick={() => setShowAlerts(true)}
+              className="relative px-4 py-2 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:border-[#ef533f] hover:text-[#ef533f] transition-all shadow-sm flex items-center gap-1.5">
+              <BellRing size={12} /> {uiLang === "ta" ? "அறிவிப்பு" : uiLang === "hi" ? "सूचना" : "Alerts"}
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#ef533f]" />
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-[10px] text-gray-300 pb-4 font-medium tracking-wider uppercase shrink-0">
+          NILA • மகளிர் ஸேவை
+        </p>
+
+        {/* Alerts modal */}
+        {showAlerts && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={e => { if (e.target === e.currentTarget) setShowAlerts(false); }}>
+            <div className="bg-[#FDF8F3] rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl">
+              <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 shrink-0">
+                <div className="flex items-center gap-2">
+                  <BellRing size={16} className="text-[#ef533f]" />
+                  <h2 className="font-bold text-sm text-[#29221C]">
+                    {uiLang === "ta" ? "அறிவிப்புகள்" : uiLang === "hi" ? "सूचनाएं" : "Notifications"}
+                  </h2>
+                </div>
+                <button onClick={() => setShowAlerts(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400"><X size={15} /></button>
+              </div>
+              <div className="overflow-y-auto p-4 space-y-3">
+                {loadingAlerts ? (
+                  <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-[#ef533f] border-t-transparent rounded-full animate-spin" /></div>
+                ) : alerts.length === 0 ? (
+                  <p className="text-center text-xs text-gray-400">
+                    {uiLang === "ta" ? "புதிய அறிவிப்புகள் இல்லை" : uiLang === "hi" ? "कोई नई सूचना नहीं" : "No new alerts"}
+                  </p>
+                ) : alerts.map(a => (
+                  <a key={a.id} href={a.link} target="_blank" rel="noopener noreferrer"
+                    className="block bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-1.5">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">News</span>
+                      <span className="text-[10px] text-gray-400">{a.date ? new Date(a.date).toLocaleDateString() : ""}</span>
+                    </div>
+                    <h3 className="font-bold text-xs text-[#29221C] mb-1 leading-snug">{a.text}</h3>
+                    <p className="text-[11px] text-gray-500">{a.source}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ── SCHEME DETAIL PAGE ────────────────────────────────────────────────────
   if (view === "scheme-detail" && activeScheme) {
@@ -591,7 +714,7 @@ export function NILAShell() {
     );
   }
 
-  // ── HOME PAGE ─────────────────────────────────────────────────────────────
+  // ── REGISTER + HOME PAGE ─────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[100dvh] bg-[#FDF8F3] text-[#2c221a] font-sans overflow-hidden relative">
       <div className="absolute inset-0 pointer-events-none opacity-[0.025]"
@@ -600,11 +723,20 @@ export function NILAShell() {
       {/* ── Header ── */}
       <header className="flex justify-between items-center z-20 px-4 lg:px-8 pt-4 pb-2 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-[#29221C] text-[#FDF8F3] rounded-full flex items-center justify-center font-bold text-base shadow-md">N</div>
-          <div>
-            <p className="font-extrabold text-sm leading-tight tracking-widest text-[#29221C]">NILA</p>
-            <p className="text-[9px] text-gray-400 font-bold tracking-[0.2em] uppercase">VOICE HELPER</p>
-          </div>
+          {view === "register" ? (
+            <button onClick={() => setView("landing")}
+              className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
+              <ArrowLeft size={18} />
+            </button>
+          ) : (
+            <>
+              <div className="w-9 h-9 bg-[#29221C] text-[#FDF8F3] rounded-full flex items-center justify-center font-bold text-base shadow-md">N</div>
+              <div>
+                <p className="font-extrabold text-sm leading-tight tracking-widest text-[#29221C]">NILA</p>
+                <p className="text-[9px] text-gray-400 font-bold tracking-[0.2em] uppercase">VOICE HELPER</p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -640,16 +772,15 @@ export function NILAShell() {
         <main className="flex-1 overflow-y-auto px-4 lg:px-8">
           <ApplicationSummary data={{ ...session.applicationData, ...answers } as Record<string, string>}
             language={lang as SupportedLanguage}
-            onConfirm={() => markComplete()}
+            onConfirm={() => { markComplete(); setView("home"); }}
             onEdit={(field: string) => processInput(`${field} மீண்டும் சொல்கிறேன்`)} />
         </main>
-      ) : (
+      ) : view === "register" ? (
         <main className="flex-1 flex flex-col lg:flex-row min-h-0 px-4 lg:px-8 gap-4 lg:gap-8 pb-4">
 
-          {/* LEFT: Registration or Chat */}
+          {/* LEFT: Registration */}
           <div className="flex-1 flex flex-col min-h-0 justify-between">
-            {!registered ? (
-              <div className="flex flex-col h-full justify-between">
+            <div className="flex flex-col h-full justify-between">
                 {/* Progress bar */}
                 <div className="flex gap-1.5 mt-2 mb-5">
                   {REG_STEPS.map((_, i) => (
@@ -715,40 +846,10 @@ export function NILAShell() {
                     {valError && <p className="text-xs text-red-500 px-4 font-bold">{valError}</p>}
                   </div>
                 )}
+                  </div>
+                )}
               </div>
-            ) : (
-              /* Post-registration chat */
-              <div className="flex flex-col h-full min-h-0">
-                <div className="overflow-y-auto flex-1 space-y-3 pb-2">
-                  {session.conversation.map((m, i) => (
-                    <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm font-medium leading-relaxed ${
-                        m.role === "user" ? "bg-[#ef533f] text-white rounded-br-sm" : "bg-white border border-gray-100 shadow-sm text-[#29221C] rounded-tl-sm"}`}>
-                        {m.text}
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="px-4 py-2.5 bg-white border border-gray-100 shadow-sm rounded-2xl rounded-tl-sm flex gap-1.5 items-center">
-                        {[0,150,300].map(d => <span key={d} className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-2 shrink-0">
-                  <input value={textInput} onChange={e => setTextInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") handleTextSubmit(); }}
-                    placeholder={uiLang === "ta" ? "தட்டச்சு செய்யவும்..." : uiLang === "hi" ? "यहाँ लिखें..." : "Type here..."}
-                    disabled={isLoading || isSpeaking}
-                    className="flex-1 rounded-full border border-gray-200 px-5 py-3 text-sm focus:outline-none focus:border-[#ef533f] focus:ring-2 focus:ring-[#ef533f]/20 disabled:bg-gray-50 shadow-sm" />
-                  <button onClick={handleTextSubmit} disabled={!textInput.trim() || isLoading}
-                    className="w-11 h-11 rounded-full bg-[#ef533f] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#d94834] transition-colors shrink-0">
-                    <Send size={15} />
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* RIGHT: Mic orb */}
@@ -796,8 +897,71 @@ export function NILAShell() {
             )}
           </div>
         </main>
-      )}
+      ) : (
+        /* HOME: post-registration chat */
+        <main className="flex-1 flex flex-col lg:flex-row min-h-0 px-4 lg:px-8 gap-4 lg:gap-8 pb-4">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex flex-col h-full min-h-0">
+              <div className="overflow-y-auto flex-1 space-y-3 pb-2">
+                {session.conversation.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm font-medium leading-relaxed ${
+                      m.role === "user" ? "bg-[#ef533f] text-white rounded-br-sm" : "bg-white border border-gray-100 shadow-sm text-[#29221C] rounded-tl-sm"}`}>
+                      {m.text}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="px-4 py-2.5 bg-white border border-gray-100 shadow-sm rounded-2xl rounded-tl-sm flex gap-1.5 items-center">
+                      {[0,150,300].map(d => <span key={d} className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 mt-2 shrink-0">
+                <input value={textInput} onChange={e => setTextInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleTextSubmit(); }}
+                  placeholder={uiLang === "ta" ? "தட்டச்சு செய்யவும்..." : uiLang === "hi" ? "यहाँ लिखें..." : "Type here..."}
+                  disabled={isLoading || isSpeaking}
+                  className="flex-1 rounded-full border border-gray-200 px-5 py-3 text-sm focus:outline-none focus:border-[#ef533f] focus:ring-2 focus:ring-[#ef533f]/20 disabled:bg-gray-50 shadow-sm" />
+                <button onClick={handleTextSubmit} disabled={!textInput.trim() || isLoading}
+                  className="w-11 h-11 rounded-full bg-[#ef533f] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#d94834] transition-colors shrink-0">
+                  <Send size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
 
+          {/* RIGHT: Mic orb */}
+          <div className="flex flex-col items-center justify-center shrink-0 lg:w-64">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-[#ef533f] mb-3 h-4">
+              {isListening ? (uiLang === "ta" ? "கேட்கிறது..." : uiLang === "hi" ? "सुन रही हूँ..." : "LISTENING...")
+                : isLoading  ? (uiLang === "ta" ? "யோசிக்கிறது..." : uiLang === "hi" ? "सोच रही हूँ..." : "THINKING...")
+                : isSpeaking ? (uiLang === "ta" ? "பேசுகிறது..." : uiLang === "hi" ? "बोल रही हूँ..." : "SPEAKING...")
+                : ""}
+            </p>
+            <div className="relative flex items-center justify-center w-40 h-40">
+              {orbActive && <>
+                <div className={`absolute inset-0 rounded-full ${isSpeaking ? "bg-[#FBBB75]/25" : "bg-[#ef533f]/10"} animate-ping`} style={{animationDuration:"2s"}} />
+                <div className={`absolute inset-4 rounded-full ${isSpeaking ? "bg-[#FBBB75]/35" : "bg-[#ef533f]/15"} animate-ping`} style={{animationDuration:"2s", animationDelay:"0.5s"}} />
+              </>}
+              {isLoading && <div className="absolute inset-8 rounded-full border-4 border-dashed border-[#FBBB75] animate-spin" style={{animationDuration:"4s"}} />}
+              <div className={`absolute inset-10 rounded-full transition-all ${isSpeaking ? "bg-[#FBBB75]/30" : "bg-[#ef533f]/15"}`} />
+              <button onClick={handleMicPress} disabled={isLoading && !isListening}
+                className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center text-white shadow-xl transition-all active:scale-95 ${
+                  isListening ? "bg-[#d94834] scale-110" : isLoading ? "bg-gray-400 cursor-wait" : "bg-[#ef533f] hover:bg-[#d94834]"}`}>
+                <Mic size={28} strokeWidth={2.5} className={isListening ? "animate-pulse" : ""} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 font-medium mt-3">
+              {uiLang === "ta" ? (isListening ? "பேசுங்கள்..." : "மைக்கை அழுத்துங்கள்")
+               : uiLang === "hi" ? (isListening ? "बोलिए..." : "माइक दबाएं")
+               : (isListening ? "Speak now..." : "Tap to speak")}
+            </p>
+          </div>
+        </main>
+      )}
       {/* ── Click away for lang dropdown ── */}
       {showLangDrop && <div className="fixed inset-0 z-10" onClick={() => setShowLangDrop(false)} />}
 
