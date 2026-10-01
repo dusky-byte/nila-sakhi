@@ -438,8 +438,8 @@ export default function CodeSlots({
             sink={Math.round(height * 0.5)}
           />
         ))}
-        <motion.span className="code-slots__wash" aria-hidden="true" style={{ clipPath: washClip }}>
-          <motion.span className="code-slots__check" style={{ transform: checkTransform, opacity: checkOpacity }}>
+        <motion.span className="code-slots__wash" aria-hidden="true" style={{ clipPath: washClip as any }}>
+          <motion.span className="code-slots__check" style={{ transform: checkTransform as any, opacity: checkOpacity as any }}>
             <HugeiconsIcon icon={Tick02Icon} size={Math.round(slotSize * 0.6)} strokeWidth={2.2} />
           </motion.span>
         </motion.span>
@@ -447,7 +447,7 @@ export default function CodeSlots({
           className="code-slots__caret"
           aria-hidden="true"
           data-show={showCaret ? '' : undefined}
-          style={{ transform: caretTransform }}
+          style={{ transform: caretTransform as any }}
         >
           <span key={active} className="code-slots__caret-line" />
         </motion.span>
@@ -463,8 +463,8 @@ function Slot({ mv, drop, char, active, rise, sink }: { mv: any; drop: any; char
   const [shown, setShown] = useState(char);
   if (char && char !== shown) setShown(char);
   const fill = useTransform(mv, (t: number) => `scale(${Math.max(t, 0)})`);
-  const lift = useTransform([mv, drop], ([t, d]: [number, number]) => `translateY(${(1 - t) * rise + Math.max(d, 0) * sink}px)`);
-  const ink = useTransform([mv, drop], ([t, d]: [number, number]) => clamp01(t) * (1 - clamp01(d / SINK_FADE)));
+  const lift = useTransform([mv, drop] as any, (([t, d]: [number, number]) => `translateY(${(1 - t) * rise + Math.max(d, 0) * sink}px)`) as any);
+  const ink = useTransform([mv, drop] as any, (([t, d]: [number, number]) => clamp01(t) * (1 - clamp01(d / SINK_FADE))) as any);
   return (
     <span
       className="code-slots__slot"
@@ -472,9 +472,9 @@ function Slot({ mv, drop, char, active, rise, sink }: { mv: any; drop: any; char
       data-filled={char ? '' : undefined}
       aria-hidden="true"
     >
-      <motion.span className="code-slots__fill" style={{ transform: fill }} />
+      <motion.span className="code-slots__fill" style={{ transform: fill as any }} />
       {shown ? (
-        <motion.span className="code-slots__digit" style={{ transform: lift, opacity: ink }}>
+        <motion.span className="code-slots__digit" style={{ transform: lift as any, opacity: ink as any }}>
           {shown}
         </motion.span>
       ) : null}

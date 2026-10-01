@@ -20,7 +20,7 @@ export async function signIn(fd: FormData) {
   if (error) {
     if (error.code === "email_not_confirmed") {
       // Generate OTP and send manually
-      const { data } = await adminAuth.generateLink({ type: "signup", email: p.data.email });
+      const { data } = await adminAuth.generateLink({ type: "signup", email: p.data.email, password: p.data.password });
       if (data?.properties?.email_otp) {
         await sendOtpEmail(p.data.email, data.properties.email_otp, "signup");
       }
@@ -90,7 +90,7 @@ export async function resendCode(fd: FormData) {
   const p = credentials.pick({ email: true }).safeParse({ email });
   if (!p.success) return back("/signup", "Enter your email to get a code.");
   
-  const { data, error } = await adminAuth.generateLink({ type: "signup", email: p.data.email });
+  const { data, error } = await adminAuth.generateLink({ type: "signup", email: p.data.email } as any);
   if (error) return back(to, "Could not resend yet. Wait a minute and try again.");
   
   if (data?.properties?.email_otp) {

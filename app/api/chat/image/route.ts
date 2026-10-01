@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
-    const model = process.env.GROQ_VISION_MODEL ?? "llama-3.2-11b-vision-preview";
+    const model = process.env.GROQ_VISION_MODEL ?? "qwen/qwen3.8-27b";
 
     const res = await groq.chat.completions.create({
       model,
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const raw = res.choices[0]?.message?.content?.trim() ?? "{}";
+    const raw = (res.choices[0]?.message?.content ?? "{}").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     const data = JSON.parse(raw);
 
     if (!data.reply) {

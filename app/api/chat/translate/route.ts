@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     };
 
     const groq = new Groq({ apiKey });
-    const model = process.env.GROQ_VISION_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct";
+    const model = process.env.GROQ_VISION_MODEL ?? "qwen/qwen3.8-27b";
 
     const res = await groq.chat.completions.create({
       model,

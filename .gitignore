@@ -1,4 +1,8 @@
 .env
+.env.*
+*.tar
+*.tar.gz
+*.zip
 
 ui/*
 node_modules/*

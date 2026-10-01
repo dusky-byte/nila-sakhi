@@ -47,20 +47,21 @@ JSON Schema:
   "action": "ask"|"confirm"|"repeat"|"simplify"|"complete"|"correct"|"back"
 }`;
 
-// ── HuggingFace REST fallback ─────────────────────────────────────────────────
-// Uses Mistral-7B-Instruct via HuggingFace Inference API (free tier, no package needed)
-const HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
+// ── HuggingFace fallback ──────────────────────────────────────────────────────
+// Inference Providers router (OpenAI-compatible). The old api-inference.huggingface.co
+// text-generation endpoint is retired. Token needs the "Make calls to Inference Providers" permission.
+const HF_API_URL = "https://router.huggingface.co/v1/chat/completions";
+
+function extractJson(raw: string): unknown | null {
+  const cleaned = raw.replace(/^```(json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
 
 async function callHuggingFace(context: object): Promise<AIResponse | null> {
   const hfKey = process.env.HF_API_KEY;
   if (!hfKey) return null;
-
-  const prompt = `<s>[INST] ${SYSTEM_PROMPT}
-
-User context:
-${JSON.stringify(context, null, 2)}
-
-Respond ONLY with a JSON object. [/INST]`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -68,47 +69,35 @@ Respond ONLY with a JSON object. [/INST]`;
   try {
     const res = await fetch(HF_API_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${hfKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${hfKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 400,
-          temperature: 0.2,
-          return_full_text: false,
-          do_sample: true,
-        },
+        model: process.env.HF_MODEL || "meta-llama/Llama-3.1-8B-Instruct",
+        temperature: 0.2,
+        max_tokens: 400,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: JSON.stringify(context) },
+        ],
       }),
       signal: controller.signal,
     });
-    clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error("[NILA HF fallback] Error:", err);
+      console.error(`[NILA HF fallback] HTTP ${res.status}:`, await res.text());
       return null;
     }
 
     const data = await res.json();
-    let raw: string = Array.isArray(data) ? data[0]?.generated_text ?? "" : data?.generated_text ?? "";
-
-    // Strip markdown fences
-    raw = raw.replace(/^```(json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-    // Extract first JSON object
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = AIResponseSchema.safeParse(JSON.parse(jsonMatch[0]));
-    if (parsed.success) {
-      console.log("[NILA] HuggingFace fallback succeeded");
-      return parsed.data;
-    }
+    const json = extractJson(data?.choices?.[0]?.message?.content ?? "");
+    const parsed = AIResponseSchema.safeParse(json);
+    if (parsed.success) return parsed.data;
+    console.error("[NILA HF fallback] Schema mismatch:", parsed.error?.issues);
     return null;
   } catch (e) {
     console.error("[NILA HF fallback] Exception:", e);
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -120,16 +109,16 @@ async function callGroq(model: string, context: object): Promise<AIResponse | nu
         model,
         temperature: 0.2,
         max_tokens: 600,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: JSON.stringify(context) },
         ],
       });
 
-      let raw = res.choices[0]?.message?.content ?? "{}";
-      raw = raw.replace(/^```(json)?\s*/i, "").replace(/\s*```$/i, "");
-      const parsed = AIResponseSchema.safeParse(JSON.parse(raw));
+      const parsed = AIResponseSchema.safeParse(extractJson(res.choices[0]?.message?.content ?? ""));
       if (parsed.success) return parsed.data;
+      console.error("[NILA Groq] Schema mismatch:", parsed.error?.issues);
     } catch (e) {
       console.error(`[NILA Groq] Attempt ${attempt + 1} failed:`, e);
       if (attempt === 1) break;
@@ -140,7 +129,7 @@ async function callGroq(model: string, context: object): Promise<AIResponse | nu
 
 export class GroqProvider implements AIProvider {
   async understand(input: AIInput): Promise<AIResponse> {
-    const model = process.env.GROQ_MODEL || "mixtral-8x7b-32768";
+    const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
     const historyText = input.conversationHistory
       .slice(-6)

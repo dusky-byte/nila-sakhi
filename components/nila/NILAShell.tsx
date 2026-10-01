@@ -315,6 +315,7 @@ export function NILAShell() {
       addMessage("nila", done); speak(done, uiLang);
       processInput(`Name: ${next.name}, Age: ${next.dob}, Region: ${next.address}, Phone: ${next.mobile}`);
       setRegistered(true);
+      setView("home");
     } else {
       setRegStep(nextStep); spokenKey.current = "";
     }
@@ -764,11 +765,11 @@ export function NILAShell() {
       </header>
 
       {/* ── Main ── */}
-      {isComplete ? (
+      {isComplete && !["home", "schemes", "alerts", "news"].includes(view) ? (
         <main className="flex-1 flex justify-center items-center overflow-y-auto px-6">
           <CompletionView language={lang as SupportedLanguage} name={answers.name} />
         </main>
-      ) : isSummary ? (
+      ) : isSummary && view !== "home" ? (
         <main className="flex-1 overflow-y-auto px-4 lg:px-8">
           <ApplicationSummary data={{ ...session.applicationData, ...answers } as Record<string, string>}
             language={lang as SupportedLanguage}

@@ -13,7 +13,7 @@ interface ApplicationSummaryProps {
 }
 
 export function ApplicationSummary({ data, language, onConfirm, onEdit }: ApplicationSummaryProps) {
-  const fields: (keyof ApplicationData)[] = ["name", "dob", "occupation", "mobile", "address"];
+  const fields: (keyof ApplicationData)[] = ["name", "dob", "aadhaar", "mobile", "address"];
 
   const confirmLabels: Record<SupportedLanguage, string> = {
     ta: "ஆம், முடிக்கலாம் ✓",
