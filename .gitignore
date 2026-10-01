@@ -3,5 +3,6 @@
 ui/*
 node_modules/*
 .next/*
+supabase/*
 
 *.sql
