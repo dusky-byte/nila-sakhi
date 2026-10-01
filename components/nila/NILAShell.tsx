@@ -159,6 +159,7 @@ export function NILAShell() {
   const [textInput,    setTextInput]    = useState("");
   const [uiLang,       setUiLang]       = useState<UILang>("ta");
   const [valError,     setValError]     = useState("");
+  const [prevView,     setPrevView]     = useState<AppView>("landing");
 
   // ── Registration state ────────────────────────────────────────────────────
   const [regStep,    setRegStep]    = useState(0);
@@ -181,10 +182,11 @@ export function NILAShell() {
   const [showRangoli,     setShowRangoli]    = useState(false);
   const [showLangDrop,    setShowLangDrop]   = useState(false);
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
-  const spokenKey     = useRef("");
-  const lastNilaRef   = useRef(0);
-  const viewRef       = useRef<AppView>(view);
+  const chatBottomRef    = useRef<HTMLDivElement>(null);
+  const homeChatBottomRef = useRef<HTMLDivElement>(null);
+  const spokenKey        = useRef("");
+  const lastNilaRef      = useRef(0);
+  const viewRef          = useRef<AppView>(view);
 
   const lang = session?.language ?? "ta";
 
@@ -241,6 +243,9 @@ export function NILAShell() {
   // ── Auto-scroll scheme chat ───────────────────────────────────────────────
   useEffect(() => { chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [schemeChat]);
 
+  // ── Auto-scroll home chat ─────────────────────────────────────────────────
+  useEffect(() => { homeChatBottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [session?.conversation]);
+
   // ── Fetch Alerts ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (showAlerts && alerts.length === 0) {
@@ -279,14 +284,24 @@ export function NILAShell() {
     const field = REG_STEPS[regStep].field;
     let errorMsg = "";
     
-    if (field === "name" && (val.length < 2 || val.length > 50)) {
-      errorMsg = uiLang === "ta" ? "பெயர் 2 முதல் 50 எழுத்துக்கள் வரை இருக்க வேண்டும்." : uiLang === "hi" ? "नाम 2 से 50 अक्षरों के बीच होना चाहिए।" : "Name must be 2 to 50 characters.";
-    } else if (field === "dob" && (val.length > 30 || !/\d/.test(val))) {
-      errorMsg = uiLang === "ta" ? "சரியான வயதை உள்ளிடவும்." : uiLang === "hi" ? "कृपया सही उम्र दर्ज करें।" : "Please enter a valid age or DOB.";
-    } else if (field === "address" && val.length > 50) {
-      errorMsg = uiLang === "ta" ? "இடம் 50 எழுத்துக்களுக்கு மிகாமல் இருக்க வேண்டும்." : uiLang === "hi" ? "स्थान 50 अक्षरों से अधिक नहीं होना चाहिए।" : "Region must not exceed 50 characters.";
-    } else if (field === "mobile" && !/^\+?[\d\s\-]{8,15}$/.test(val.replace(/\s+/g, ""))) {
-      errorMsg = uiLang === "ta" ? "சரியான தொலைபேசி எண்ணை உள்ளிடவும்." : uiLang === "hi" ? "कृपया सही फ़ोन नंबर दर्ज करें।" : "Please enter a valid phone number.";
+    if (field === "name") {
+      const hasLetters = /[a-zA-Z\u0B80-\u0BFF\u0900-\u097F]/.test(val);
+      if (val.length < 2 || val.length > 60 || !hasLetters) {
+        errorMsg = uiLang === "ta" ? "சரியான பெயரை உள்ளிடவும் (2–60 எழுத்துக்கள்)." : uiLang === "hi" ? "सही नाम दर्ज करें (2–60 अक्षर)।" : "Enter a valid name (2–60 characters).";
+      }
+    } else if (field === "dob") {
+      if (val.length > 30 || !/\d/.test(val)) {
+        errorMsg = uiLang === "ta" ? "சரியான வயதை உள்ளிடவும்." : uiLang === "hi" ? "कृपया सही उम्र दर्ज करें।" : "Please enter a valid age or DOB.";
+      }
+    } else if (field === "address") {
+      if (val.length < 2 || val.length > 60) {
+        errorMsg = uiLang === "ta" ? "இடம் 2 முதல் 60 எழுத்துக்கள் இருக்க வேண்டும்." : uiLang === "hi" ? "स्थान 2 से 60 अक्षरों के बीच होना चाहिए।" : "Region must be 2–60 characters.";
+      }
+    } else if (field === "mobile") {
+      const cleaned = val.replace(/[\s\-]/g, "");
+      if (!/^\+?\d{8,15}$/.test(cleaned)) {
+        errorMsg = uiLang === "ta" ? "சரியான தொலைபேசி எண்ணை உள்ளிடவும்." : uiLang === "hi" ? "कृपया सही फ़ोन नंबर दर्ज करें।" : "Please enter a valid phone number.";
+      }
     }
 
     if (errorMsg) {
@@ -390,6 +405,7 @@ export function NILAShell() {
       : `What would you like to know about ${s.title}?`;
     setSchemeChat([{ role: "nila", text: intro }]);
     speak(intro, uiLang);
+    setPrevView("schemes");
     setView("scheme-detail");
   }
 
@@ -555,7 +571,7 @@ export function NILAShell() {
       <div className="flex flex-col h-[100dvh] bg-[#FDF8F3] overflow-hidden">
         {/* Header */}
         <header className="flex items-center gap-3 px-4 lg:px-8 pt-4 pb-3 border-b border-gray-100 shrink-0">
-          <button onClick={() => { setView("schemes"); setSchemeChat([]); }}
+          <button onClick={() => { setView(prevView === "schemes" ? "schemes" : registered ? "home" : "landing"); setSchemeChat([]); }}
             className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
             <ArrowLeft size={18} />
           </button>
@@ -624,7 +640,7 @@ export function NILAShell() {
     return (
       <div className="flex flex-col h-[100dvh] bg-[#FDF8F3] overflow-hidden">
         <header className="flex items-center gap-3 px-4 lg:px-8 pt-4 pb-3 border-b border-gray-100 shrink-0">
-          <button onClick={() => setView("home")}
+          <button onClick={() => setView(registered ? "home" : "landing")}
             className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
             <ArrowLeft size={18} />
           </button>
@@ -668,7 +684,7 @@ export function NILAShell() {
     return (
       <div className="flex flex-col h-[100dvh] bg-[#fdf5e6] overflow-hidden font-serif">
         <header className="flex items-center gap-3 px-4 lg:px-8 pt-6 pb-4 border-b-2 border-black/80 shrink-0">
-          <button onClick={() => setView("home")}
+          <button onClick={() => setView(registered ? "home" : "landing")}
             className="w-9 h-9 rounded-full hover:bg-black/5 flex items-center justify-center text-black transition-colors">
             <ArrowLeft size={18} />
           </button>
@@ -799,19 +815,19 @@ export function NILAShell() {
                   </h2>
 
                   {confirming ? (
-                    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-md animate-fade_in">
                       <p className="text-xs text-gray-400 mb-1">
                         {uiLang === "ta" ? "நீங்கள் சொன்னது:" : uiLang === "hi" ? "आपने कहा:" : "You said:"}
                       </p>
                       <p className="text-xl font-bold text-[#29221C] mb-4">"{confirming.value}"</p>
                       <div className="flex gap-3">
                         <button onClick={handleConfirmYes}
-                          className="flex-1 py-2.5 rounded-full bg-[#ef533f] text-white font-bold text-sm hover:bg-[#d94834] flex items-center justify-center gap-1.5 transition-colors">
+                          className="flex-1 py-2.5 rounded-full bg-[#ef533f] text-white font-bold text-sm hover:bg-[#d94834] active:scale-95 flex items-center justify-center gap-1.5 transition-all">
                           <CheckCircle2 size={15} />
                           {uiLang === "ta" ? "ஆம், சரி" : uiLang === "hi" ? "हाँ, सही" : "Yes, correct"}
                         </button>
                         <button onClick={handleConfirmNo}
-                          className="flex-1 py-2.5 rounded-full border border-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors">
+                          className="flex-1 py-2.5 rounded-full border border-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-50 active:scale-95 transition-all">
                           {uiLang === "ta" ? "மீண்டும்" : uiLang === "hi" ? "फिर से" : "Redo"}
                         </button>
                       </div>
@@ -850,7 +866,7 @@ export function NILAShell() {
               </div>
             </div>
 
-            {/* RIGHT: Mic orb */}
+          {/* RIGHT: Mic orb */}
           <div className="flex flex-col items-center justify-center shrink-0 lg:w-64">
             <p className="text-[10px] font-bold tracking-widest uppercase text-[#ef533f] mb-3 h-4">
               {isListening ? (uiLang === "ta" ? "கேட்கிறது..." : uiLang === "hi" ? "सुन रही हूँ..." : "LISTENING...")
@@ -902,7 +918,7 @@ export function NILAShell() {
             <div className="flex flex-col h-full min-h-0">
               <div className="overflow-y-auto flex-1 space-y-3 pb-2">
                 {session.conversation.map((m, i) => (
-                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} animate-fade_in`}>
                     <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm font-medium leading-relaxed ${
                       m.role === "user" ? "bg-[#ef533f] text-white rounded-br-sm" : "bg-white border border-gray-100 shadow-sm text-[#29221C] rounded-tl-sm"}`}>
                       {m.text}
@@ -916,6 +932,7 @@ export function NILAShell() {
                     </div>
                   </div>
                 )}
+                <div ref={homeChatBottomRef} />
               </div>
               <div className="flex gap-2 mt-2 shrink-0">
                 <input value={textInput} onChange={e => setTextInput(e.target.value)}
@@ -974,7 +991,7 @@ export function NILAShell() {
                 <h2 className="font-bold text-sm text-[#29221C]">
                   {uiLang === "ta" ? "அறிவிப்புகள்" : uiLang === "hi" ? "सूचनाएं" : "Notifications"}
                 </h2>
-                {!loadingAlerts && <span className="w-5 h-5 rounded-full bg-[#ef533f] text-white text-[10px] font-bold flex items-center justify-center">{alerts.length}</span>}
+                {!loadingAlerts && alerts.length > 0 && <span className="w-5 h-5 rounded-full bg-[#ef533f] text-white text-[10px] font-bold flex items-center justify-center">{alerts.length}</span>}
               </div>
               <button onClick={() => setShowAlerts(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400"><X size={15} /></button>
             </div>

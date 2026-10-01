@@ -21,7 +21,7 @@ export async function middleware(req: NextRequest) {
   const isPublic = PUBLIC.includes(path) || PUBLIC_PREFIX.some((p) => path.startsWith(p));
   if (!user && !isPublic && path.startsWith("/api/")) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", req.url));
-  if (user && (path === "/login" || path === "/signup")) return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (user && (path === "/login" || path === "/signup")) return NextResponse.redirect(new URL("/", req.url));
   return res;
 }
 

@@ -28,7 +28,7 @@ export async function signIn(fd: FormData) {
     }
     return back("/login", "Email or password is incorrect.");
   }
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function signUp(fd: FormData) {
@@ -110,5 +110,5 @@ export async function resetWithCode(fd: FormData) {
   if (v.error) return back(to, "That code is wrong or has expired. Request a new one.");
   const u = await sb.auth.updateUser({ password: p.data.password });
   if (u.error) return back(to, u.error.message);
-  redirect("/dashboard");
+  redirect("/");
 }
