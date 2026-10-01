@@ -846,13 +846,10 @@ export function NILAShell() {
                     {valError && <p className="text-xs text-red-500 px-4 font-bold">{valError}</p>}
                   </div>
                 )}
-                  </div>
-                )}
               </div>
             </div>
-          </div>
 
-          {/* RIGHT: Mic orb */}
+            {/* RIGHT: Mic orb */}
           <div className="flex flex-col items-center justify-center shrink-0 lg:w-64">
             <p className="text-[10px] font-bold tracking-widest uppercase text-[#ef533f] mb-3 h-4">
               {isListening ? (uiLang === "ta" ? "கேட்கிறது..." : uiLang === "hi" ? "सुन रही हूँ..." : "LISTENING...")
